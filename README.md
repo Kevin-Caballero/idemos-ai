@@ -1,98 +1,55 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# AI Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Servicio de generación de resúmenes de iniciativas parlamentarias. Al arrancar (y al recibir un mensaje RabbitMQ), detecta las iniciativas sin resumen y genera uno mediante un modelo LLM local a través de Ollama.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Cómo funciona
 
-## Description
+Consulta la base de datos buscando `Initiative` sin `InitiativeSummary` asociado. Para cada una, envía el texto de la iniciativa al modelo configurado y persiste el resumen generado.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+El proceso es secuencial (una iniciativa a la vez) para no saturar la GPU/CPU. Si ya hay una generación en curso, los nuevos mensajes RabbitMQ se ignoran hasta que termine.
 
-## Project setup
+## Variables de entorno
 
-```bash
-$ npm install
-```
+| Variable       | Por defecto              | Descripción                |
+| -------------- | ------------------------ | -------------------------- |
+| `OLLAMA_URL`   | `http://localhost:11434` | URL del servidor Ollama    |
+| `AI_MODEL`     | `llama3.2`               | Modelo a utilizar          |
+| `DB_HOST`      | `localhost`              | Host de PostgreSQL         |
+| `DB_PORT`      | `5432`                   | Puerto de PostgreSQL       |
+| `DB_NAME`      | `idemos`                 | Nombre de la base de datos |
+| `RABBITMQ_URL` | `amqp://localhost:5672`  | URL de RabbitMQ            |
 
-## Compile and run the project
+## Required versions
 
-```bash
-# development
-$ npm run start
+| Tool / Package          | Version |
+| ----------------------- | ------- |
+| Node.js                 | >= 20.0 |
+| npm                     | >= 10.0 |
+| TypeScript              | ^5.7.3  |
+| NestJS (`@nestjs/core`) | ^11.0.1 |
+| TypeORM                 | ^0.3.20 |
+| `@nestjs/typeorm`       | ^11.0.0 |
+| `@nestjs/microservices` | ^11.0.1 |
+| `openai`                | ^4.97.0 |
+| PostgreSQL (`pg`)       | ^8.13.3 |
 
-# watch mode
-$ npm run start:dev
+> Requiere una instancia de [Ollama](https://ollama.com/) accesible desde el servicio.
 
-# production mode
-$ npm run start:prod
-```
+## Ollama y Docker
 
-## Run tests
+El servicio AI corre en local (fuera de Docker), pero **Ollama sí se levanta en un contenedor** como parte de la infraestructura del monorepo:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run dev          # CPU (por defecto)
+USE_GPU=true npm run dev  # GPU (NVIDIA)
 ```
 
-## Deployment
+Cuando `USE_GPU=true`, se aplica el override `docker-compose.dev.gpu.yml`, que configura el acceso a la GPU a través del **NVIDIA Container Toolkit**. Requiere tenerlo instalado en el host ([guía oficial](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Scripts
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev   # development (watch mode)
+npm run start:prod  # production
+npm run test        # unit tests
 ```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

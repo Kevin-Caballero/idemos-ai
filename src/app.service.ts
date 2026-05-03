@@ -4,6 +4,15 @@ import { Repository } from 'typeorm';
 import { Initiative, InitiativeSummary } from '@idemos/common';
 import OpenAI from 'openai';
 
+/**
+ * Servicio de generación de resúmenes de iniciativas parlamentarias mediante LLM.
+ * Utiliza la API compatible con OpenAI que expone Ollama para invocar un modelo local
+ * (por defecto llama3.2). Los resúmenes se generan con un prompt diseñado para producir
+ * texto neutro y accesible para ciudadanos sin formación jurídica.
+ * Al arrancar genera los resúmenes pendientes; también puede ser invocado mediante
+ * el evento RPC `sync.completed` emitido por el servicio ETL tras cada sincronización.
+ * El flag `generating` previene ejecuciones paralelas ante llamadas simultáneas.
+ */
 @Injectable()
 export class AppService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AppService.name);

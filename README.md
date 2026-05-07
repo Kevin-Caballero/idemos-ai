@@ -19,7 +19,7 @@ El proceso es secuencial (una iniciativa a la vez) para no saturar la GPU/CPU. S
 | `DB_NAME`      | `idemos`                 | Nombre de la base de datos |
 | `RABBITMQ_URL` | `amqp://localhost:5672`  | URL de RabbitMQ            |
 
-## Required versions
+## Requisitos
 
 | Tool / Package          | Version |
 | ----------------------- | ------- |
